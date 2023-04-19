@@ -353,7 +353,7 @@ export default class App extends React.Component<any, State> {
                                 </form>
                                 <div
                                     className="text-xs text-black/50 dark:text-white/50 pt-2 pb-3 px-3 md:pt-3 md:pb-6 md:px-4 text-center">
-                                    <a href='https://github.com/panyanyany/muchat-aio'>Powered by Muchat</a>
+                                    <a href='https://github.com/panyanyany/muchat-aio' target='_blank'>Powered by Muchat</a>
                                 </div>
                             </div>
                         </main>
