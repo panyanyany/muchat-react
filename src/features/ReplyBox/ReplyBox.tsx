@@ -34,6 +34,7 @@ const Code2Msg = {
     [CodeErrGptError]: i18nUtil.t('GPT接口异常').toString(),
     [CodeErrReachCap]: i18nUtil.t('额度用完').toString(),
     [CodeErrExpired]: i18nUtil.t('额度已过期').toString(),
+    [CodeErrUnAuth]: i18nUtil.t('无权限').toString(),
     [CodeErrUnknown]: i18nUtil.t('未知错误').toString(),
 }
 
