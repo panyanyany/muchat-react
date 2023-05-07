@@ -5,6 +5,8 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {createBrowserRouter, RouteObject, RouterProvider} from "react-router-dom";
 import './util/i18n-util'
+import { Provider } from 'react-redux';
+import store from "./store/store";
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -17,7 +19,7 @@ if (location.hostname === 'a.ai37.top') {
 } else {
     routes.push({
         path: "/*",
-        element: <App/>,
+        element: <Provider store={store}><App/></Provider>,
     })
 }
 

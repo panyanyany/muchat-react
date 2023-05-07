@@ -27,6 +27,13 @@ const resources = {
             '购买': 'Purchase',
             '额度用完': 'Insufficient quota',
             '额度已过期': 'Expired quota',
+            '确定': 'Confirm',
+            '取消': 'Cancel',
+            '选择一个预设 Prompt': 'Select a preset prompt',
+            '无权限': 'No permission',
+            '新增': 'Add',
+            '新增预设 Prompt': 'Add a preset prompt',
+            '菜单': 'Menu',
         }
     },
     zh: {
@@ -48,6 +55,13 @@ const resources = {
             '购买': '购买',
             '额度用完': '额度用完',
             '额度已过期': '额度已过期',
+            '确定': '确定',
+            '取消': '取消',
+            '选择一个预设 Prompt': '选择一个预设 Prompt',
+            '无权限': '无权限',
+            '新增': '新增',
+            '新增预设 Prompt': '新增预设 Prompt',
+            '菜单': '菜单',
         }
     }
 };

@@ -1,0 +1,13 @@
+.mobile-menu-active {
+  display: block;
+  width: 100%;
+  z-index: 10;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  height: 100%;
+
+  nav:first-child {
+    box-shadow: 0.5rem 0em 7px #dad9d9;
+  }
+}

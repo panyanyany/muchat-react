@@ -6,6 +6,16 @@ export function getUrlSlug() {
     return location.pathname.split('?')[0].split('/')[1]
 }
 
+export function getUserSlug() {
+    let slug;
+    slug = getUrlSlug()
+    if (slug) {
+        return slug
+    }
+    slug = Cookies.get('slug')
+    return slug
+}
+
 export function urlSlugToCookie(urlSlug?: string) {
     if (!urlSlug) {
         urlSlug = getUrlSlug()
