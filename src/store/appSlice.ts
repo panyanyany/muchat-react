@@ -9,15 +9,19 @@ export interface IPushQaItem extends QaItem {
 
 export interface IAppSlice {
     currentChat: string
+    currentChatIdx: number
     qaList: QaItem[]
     showProductAlert: boolean
     think: boolean
     chats: ChatSession[]
     chatCnt: number
     presetPrompt?: IPresetPrompt
+    enabledCtx?: boolean
 }
 
 const initChats = JSON.parse(localStorage.getItem('chats') || '[]') as ChatSession[]
+const initPresetPrompt = localStorage.getItem('presetPrompt') ? JSON.parse(localStorage.getItem('presetPrompt')!) : undefined
+const initEnabledCtx = JSON.parse(localStorage.getItem('enabledCtx') || 'false')
 
 const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
     name: "app",
@@ -28,10 +32,12 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
         think: false,
         chats: initChats,
         chatCnt: initChats.length,
-        presetPrompt: undefined,
+        presetPrompt: initPresetPrompt,
+        currentChatIdx: -1,
+        enabledCtx: initEnabledCtx,
     },
     reducers: {
-        delChat: (state, action: PayloadAction<{chatId: string}>) => {
+        delChat: (state, action: PayloadAction<{ chatId: string }>) => {
             const {chatId} = action.payload
 
             for (const chat of state.chats) {
@@ -40,6 +46,7 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
                     break
                 }
             }
+            state.currentChat = ''
         },
         setChatName: (state, action) => {
             const {chatId, name} = action.payload
@@ -61,8 +68,17 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
             const {chatId, presetPrompt} = action.payload
             state.presetPrompt = presetPrompt
         },
-        setCurrentChat: (state, action) => {
-            state.currentChat = action.payload;
+        triggerCtx: (state, action: PayloadAction<{ idx: number, enabledCtx: boolean }>) => {
+            const {idx, enabledCtx} = action.payload
+            if (idx == -1) {
+                state.enabledCtx = enabledCtx;
+            } else {
+                state.chats[idx].enabledCtx = enabledCtx;
+            }
+        },
+        setCurrentChat: (state, action: PayloadAction<{ id: string; idx: number }>) => {
+            state.currentChat = action.payload.id;
+            state.currentChatIdx = action.payload.idx;
         },
         setShowProductAlert: (state, action) => {
             state.showProductAlert = action.payload;
@@ -105,6 +121,7 @@ export const {
     setAppPresetPrompt,
     setChatName,
     delChat,
+    triggerCtx,
 } = appSlice.actions
 
 export function getChat(state: IAppSlice) {

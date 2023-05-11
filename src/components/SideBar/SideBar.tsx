@@ -24,14 +24,14 @@ export function SideBar(props: ISideBarProps) {
             <div className="flex min-h-0 h-full flex-col ">
                 <div className="flex h-full w-full items-start border-white/20">
                     <nav className="flex flex-col flex-1 space-y-1 p-2 pb-2 w-full bg-gray-900 h-full">
-                        <SideBarNewChat onSelect={() => dispatch(setCurrentChat(''))}/>
+                        <SideBarNewChat onSelect={() => dispatch(setCurrentChat({id: '', idx: -1}))}/>
                         {
-                            chats.map((chat) => {
+                            chats.map((chat, idx) => {
                                 return <SideBarChat key={chat.id}
                                                     chat={chat}
                                                     selected={chat.id == app.currentChat}
                                                     onSelect={() => {
-                                                        dispatch(setCurrentChat(chat.id))
+                                                        dispatch(setCurrentChat({id: chat.id, idx: idx}))
                                                     }
                                                     }/>
                             })

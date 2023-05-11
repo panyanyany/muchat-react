@@ -20,8 +20,11 @@ export function MessageInputForm() {
     const dispatch = useDispatch()
     const qaList = useSelector((state: RootState) => state.app.qaList)
     const think = useSelector((state: RootState) => state.app.think)
+    const app = useSelector((state: RootState) => state.app)
     const currentChat = useSelector((state: RootState) => state.app.currentChat)
+    const currentChatIdx = useSelector((state: RootState) => state.app.currentChatIdx)
     const chatCnt = useSelector((state: RootState) => state.app.chatCnt)
+    const enabledCtx = currentChatIdx >= 0 ? app.chats[currentChatIdx].enabledCtx : app.enabledCtx
 
     function handleChange(e) {
         // console.log('handleChange', e)
@@ -46,8 +49,9 @@ export function MessageInputForm() {
         let curChat: ChatSession
         let chatId = store.getState().app.currentChat // 闭包内用外部的 currentChat 拿不到最新的值，但在函数外是可以拿到的
         if (!chatId) {
-            curChat = newChat(chatCnt+1)
+            curChat = newChat(chatCnt + 1)
             curChat.presetPrompt = store.getState().app.presetPrompt
+            curChat.enabledCtx = store.getState().app.enabledCtx
             dispatch(createChat(curChat))
             chatId = curChat.id
         }
@@ -64,8 +68,6 @@ export function MessageInputForm() {
     }
 
     function addDialog(chatId: string, dtype: number, text: string, hasError = 0, respData = undefined) {
-        // const chatId = app.currentChat
-        // dispatch(setCurrentChat(chatId))
         dispatch(pushQaItem({dtype, text, hasError, respData, chatId}))
         setTimeout(() => {
             window['qaContainerTail'].scrollIntoView()
@@ -77,16 +79,20 @@ export function MessageInputForm() {
 
         const msgAry = qaList.filter(e => !e.hasError)
         const messages: MessageItem[] = []
-        for (const item of msgAry) {
-            const role = item.dtype == D_ASK ? 'user' : 'assistant'
-            const content = item.text
-            messages.push({role, content})
+        if (enabledCtx) {
+            for (const item of msgAry) {
+                const role = item.dtype == D_ASK ? 'user' : 'assistant'
+                const content = item.text
+                messages.push({role, content})
+            }
         }
         messages.push({role: 'user', content: question})
 
         const lastAry = qaList.filter(e => !e.hasError && e.dtype == D_REPLY).slice(-1)
         if (lastAry.length == 1) {
-            question = lastAry[0].text + '\n\n' + question
+            if (enabledCtx) {
+                question = lastAry[0].text + '\n\n' + question
+            }
         }
         let resp, msg, hasError, respData
         try {

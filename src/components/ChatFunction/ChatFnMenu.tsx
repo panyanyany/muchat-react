@@ -70,7 +70,6 @@ export function ChatFnMenu(props: IChatFnMenuProps) {
                                     className="px-4 py-3 flex flex-col sm:px-6 gap-1 sm:gap-0">
                                     <a className="p-2 hover:bg-gray-200 cursor-pointer"
                                        onClick={() => setPrompt(true)}>预设Prompt</a>
-                                    <a className="p-2 hover:bg-gray-200 cursor-pointer">菜单1</a>
                                     {
                                         props.chat &&
                                         <a className="p-2 hover:bg-gray-200 cursor-pointer" onClick={() => {

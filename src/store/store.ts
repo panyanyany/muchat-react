@@ -11,6 +11,8 @@ const store = configureStore({
 store.subscribe(() => {
     const curApp = store.getState().app
     localStorage.setItem('chats', JSON.stringify(curApp.chats))
+    localStorage.setItem('presetPrompt', JSON.stringify(curApp.presetPrompt))
+    localStorage.setItem('enabledCtx', JSON.stringify(curApp.enabledCtx))
 })
 
 export default store

@@ -7,6 +7,7 @@ export interface ChatSession {
     name: string
     presetPrompt?: IPresetPrompt
     qaList: QaItem[]
+    enabledCtx?: boolean
 }
 
 export interface QaItem {
