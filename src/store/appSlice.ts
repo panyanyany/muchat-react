@@ -20,7 +20,15 @@ export interface IAppSlice {
 }
 
 const initChats = JSON.parse(localStorage.getItem('chats') || '[]') as ChatSession[]
-const initPresetPrompt = localStorage.getItem('presetPrompt') ? JSON.parse(localStorage.getItem('presetPrompt')!) : undefined
+let initPresetPrompt: any = localStorage.getItem('presetPrompt') || '{}'
+try {
+    initPresetPrompt = JSON.parse(initPresetPrompt)
+} catch (e) {
+    initPresetPrompt = null
+}
+if (!initPresetPrompt?.act) {
+    initPresetPrompt = null
+}
 const initEnabledCtx = JSON.parse(localStorage.getItem('enabledCtx') || 'false')
 
 const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
