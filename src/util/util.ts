@@ -78,3 +78,9 @@ export function getAgent() {
     const subSite = location.host.split('.')[0]
     return agents[subSite] || agents[location.hostname] || {}
 }
+
+
+export function getAddAcc() {
+    const u = new URLSearchParams(location.search)
+    return !!u.get('add-acc')
+}

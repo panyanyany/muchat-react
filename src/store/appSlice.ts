@@ -2,6 +2,7 @@ import {createSlice, PayloadAction, SliceCaseReducers} from "@reduxjs/toolkit";
 import {ChatSession, QaItem} from "../interfaces/session";
 import {newChat} from "../util/chat";
 import {IPresetPrompt} from "../interfaces/prompt";
+import {getAddAcc, getUserSlug} from "../util/util";
 
 export interface IPushQaItem extends QaItem {
     chatId: string
@@ -30,13 +31,14 @@ if (!initPresetPrompt?.act) {
     initPresetPrompt = null
 }
 const initEnabledCtx = JSON.parse(localStorage.getItem('enabledCtx') || 'false')
+let initShowProductAlert = !getUserSlug() && !getAddAcc()
 
 const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
     name: "app",
     initialState: {
         currentChat: '' as string,
         qaList: [] as QaItem[],
-        showProductAlert: true,
+        showProductAlert: initShowProductAlert,
         think: false,
         chats: initChats,
         chatCnt: initChats.length,

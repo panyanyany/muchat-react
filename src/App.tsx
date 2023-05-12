@@ -4,7 +4,7 @@ import './App.css';
 import AskBox from "./features/AskBox/AskBox";
 import {ReplyBox} from "./features/ReplyBox/ReplyBox";
 import {ProductAlert} from "./features/ProductAlert/ProductAlert";
-import {getAgent, getUserSlug, slugToUrl, urlArgsToCookie} from "./util/util";
+import {getAddAcc, getAgent, getUserSlug, slugToUrl, urlArgsToCookie} from "./util/util";
 import i18nUtil from './util/i18n-util'
 import {SideBar} from "./components/SideBar/SideBar";
 import {MessageInputForm} from "./components/MessageInputForm/MessageInputForm";
@@ -37,18 +37,8 @@ export default function App() {
         i18nUtil.changeLanguage('zh-CN')
     }
 
-    let _showProductAlert = !getUserSlug() && !getAddAcc()
-
     urlArgsToCookie()
     slugToUrl()
-
-    if (location.hostname.endsWith('ai9.top')) {
-        _showProductAlert = false
-        Cookies.set('trail', '1')
-    }
-    if (!_showProductAlert && _showProductAlert != showProductAlert) {
-        dispatch(setShowProductAlert(false))
-    }
 
     if (Cookies.get('demo')) {
         // URL动画
@@ -60,11 +50,6 @@ export default function App() {
         // setTimeout(() => {
         //     URL.stop(); // Stop Animation
         // }, 5000)
-    }
-
-    function getAddAcc() {
-        const u = new URLSearchParams(location.search)
-        return !!u.get('add-acc')
     }
 
     function triggerProductAlert(val) {
