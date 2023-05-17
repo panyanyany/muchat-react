@@ -18,4 +18,5 @@ content=$(cat /app/build/index.html)
 generateConfigJs > /app/build/index.html
 echo "$content" >> /app/build/index.html
 
+cp /app/docker/default.conf /etc/nginx/conf.d/default.conf
 nginx -g "daemon off;"
