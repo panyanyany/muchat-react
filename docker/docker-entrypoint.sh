@@ -12,9 +12,10 @@ function generateConfigJs(){
     echo "</script>";
 }
 
-#[ -f /app/build/index.html.origin ] || cp /app/build/index.html /app/build/index.html.origin
-#content=$(cat /app/build/index.html.origin)
-content=$(cat /app/build/index.html)
+# 其实不保存成 origin 也可以，docker compose 会判断环境变量有没有改过，有的话会初始化 container
+[ -f /app/build/index.html.origin ] || cp /app/build/index.html /app/build/index.html.origin
+content=$(cat /app/build/index.html.origin)
+#content=$(cat /app/build/index.html)
 generateConfigJs > /app/build/index.html
 echo "$content" >> /app/build/index.html
 
