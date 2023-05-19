@@ -3,10 +3,13 @@ import './ReplyBox.css'
 import {AiOutlineCopy} from "react-icons/ai";
 import {CopyToClipboard} from 'react-copy-to-clipboard';
 import Typed from 'react-typed';
-import {IResponseData} from "../../models/api";
+import {IResponseData} from "../../interfaces/api";
 import Cookies from "js-cookie";
 import i18nUtil from "../../util/i18n-util";
 import _ from 'lodash'
+import {useSelector} from "react-redux";
+import {RootState} from "../../store/store";
+import {IAppSlice} from "../../store/appSlice";
 
 export interface IReplyBoxProps {
     text: string,
@@ -44,6 +47,7 @@ export function ReplyBox(props: IReplyBoxProps) {
     const [copied, setCopied] = useState<boolean>(false)
     const [showCursor, setShowCursor] = useState<boolean>(false)
     const [waitingText, setWaitingText] = useState(initWaitingPromptText)
+    const app: IAppSlice = useSelector((state: RootState) => state.app)
 
     const typed = useRef<any>(null)
 
@@ -51,18 +55,18 @@ export function ReplyBox(props: IReplyBoxProps) {
     const useTyped = Cookies.get('typed') == '1'
     if (props.waiting) {
         useEffect(() => {
-            console.log('useeffect')
+            // console.log('useeffect')
             let cnt = 0
             const counterTimer = setInterval(() => {
-                console.log(counterTimer, 'cnt', cnt)
+                // console.log(counterTimer, 'cnt', cnt)
                 setWaitingText(initWaitingPromptText + _.repeat('.', cnt))
-                console.log(initWaitingPromptText + _.repeat('.', cnt))
+                // console.log(initWaitingPromptText + _.repeat('.', cnt))
                 cnt++
                 cnt %= 7
-            }, 300)
-            console.log('setInterval', counterTimer)
+            }, 200)
+            // console.log('setInterval', counterTimer)
             return () => {
-                console.log('clearInterval', counterTimer)
+                // console.log('clearInterval', counterTimer)
                 clearInterval(counterTimer)
             }
         }, [])
@@ -91,7 +95,7 @@ export function ReplyBox(props: IReplyBoxProps) {
                 {tips}
             </div>
         )
-    } else if (useTyped && props.index + 1 == props.total) { // 打字机效果
+    } else if (useTyped && props.index + 1 == props.total && app.loading) { // 打字机效果
         textDom = (
             <p className={`tpl-text`}>
                 <Typed

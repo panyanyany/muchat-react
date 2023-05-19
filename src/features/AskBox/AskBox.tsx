@@ -19,7 +19,7 @@ export default class AskBox extends React.Component<any, any> {
             tips = (
                 <div className={'text-left text-gray-400 text-xs'}>
                     <hr/>
-                    官方接口一次最多返回 2000 字左右，太多字容易报错。不要硬性规定字数，等它回答完后，让它 “继续” 即可。
+                    官方接口一次最多返回 1000 字左右。如果报错了，试试启用【Stream】模式。
                 </div>
             )
         }

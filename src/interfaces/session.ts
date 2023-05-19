@@ -8,9 +8,11 @@ export interface ChatSession {
     presetPrompt?: IPresetPrompt
     qaList: QaItem[]
     enabledCtx?: boolean
+    enabledStream?: boolean
 }
 
 export interface QaItem {
+    id?: string
     dtype: number
     text: string
     hasError: number

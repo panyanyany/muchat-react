@@ -3,6 +3,8 @@ import {ChatSession, QaItem} from "../interfaces/session";
 import {newChat} from "../util/chat";
 import {IPresetPrompt} from "../interfaces/prompt";
 import {getAddAcc, getUserSlug} from "../util/util";
+import Cookies from "js-cookie";
+import {RootState} from "./store";
 
 export interface IPushQaItem extends QaItem {
     chatId: string
@@ -14,23 +16,15 @@ export interface IAppSlice {
     qaList: QaItem[]
     showProductAlert: boolean
     think: boolean
+    loading: boolean
     chats: ChatSession[]
     chatCnt: number
     presetPrompt?: IPresetPrompt
     enabledCtx?: boolean
+    enabledStream?: boolean
 }
 
 const initChats = JSON.parse(localStorage.getItem('chats') || '[]') as ChatSession[]
-let initPresetPrompt: any = localStorage.getItem('presetPrompt') || '{}'
-try {
-    initPresetPrompt = JSON.parse(initPresetPrompt)
-} catch (e) {
-    initPresetPrompt = null
-}
-if (!initPresetPrompt?.act) {
-    initPresetPrompt = null
-}
-const initEnabledCtx = JSON.parse(localStorage.getItem('enabledCtx') || 'false')
 let initShowProductAlert = !getUserSlug() && !getAddAcc()
 
 const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
@@ -40,11 +34,13 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
         qaList: [] as QaItem[],
         showProductAlert: initShowProductAlert,
         think: false,
+        loading: false,
         chats: initChats,
         chatCnt: initChats.length,
-        presetPrompt: initPresetPrompt,
+        presetPrompt: undefined,
         currentChatIdx: -1,
-        enabledCtx: initEnabledCtx,
+        enabledCtx: true, // 重新打开窗口，默认开户上下文
+        enabledStream: false, // 重新打开窗口，默认关闭Stream
     },
     reducers: {
         delChat: (state, action: PayloadAction<{ chatId: string }>) => {
@@ -72,7 +68,11 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
             if (typeof curChat === 'undefined') {
                 throw new Error('currentChat not found')
             }
-            curChat.presetPrompt = presetPrompt
+            if (presetPrompt?.act == '无预设') {
+                curChat.presetPrompt = undefined
+            } else {
+                curChat.presetPrompt = presetPrompt
+            }
         },
         setAppPresetPrompt: (state, action) => {
             const {chatId, presetPrompt} = action.payload
@@ -86,9 +86,22 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
                 state.chats[idx].enabledCtx = enabledCtx;
             }
         },
+        triggerStream: (state, action: PayloadAction<{ idx: number, enabledStream: boolean }>) => {
+            const {idx, enabledStream} = action.payload
+            if (idx == -1) {
+                state.enabledStream = enabledStream;
+            } else {
+                state.chats[idx].enabledStream = enabledStream;
+            }
+        },
         setCurrentChat: (state, action: PayloadAction<{ id: string; idx: number }>) => {
             state.currentChat = action.payload.id;
             state.currentChatIdx = action.payload.idx;
+            if (state.currentChatIdx == -1) {
+                state.enabledCtx = true
+                state.presetPrompt = undefined
+                state.enabledStream = false
+            }
         },
         setShowProductAlert: (state, action) => {
             state.showProductAlert = action.payload;
@@ -115,8 +128,31 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
             curChat.qaList.push(action.payload)
             // state.currentChat = curChat.id
         },
+        upsertQaItem: (state, action: PayloadAction<IPushQaItem>) => {
+            const qaItem = action.payload
+            const chatId = qaItem.chatId
+
+            const curChat = getChat(state)(chatId)
+            if (!curChat) {
+                return
+            }
+            let found
+            curChat.qaList.forEach((item, idx) => {
+                if (qaItem.id && qaItem.id == item.id) {
+                    curChat.qaList[idx].text += qaItem.text
+                    found = true
+                }
+            })
+            if (!found) {
+                curChat.qaList.push(qaItem)
+            }
+            // state.currentChat = curChat.id
+        },
         setThink: (state, action) => {
             state.think = action.payload;
+        },
+        setLoading: (state, action) => {
+            state.loading = action.payload;
         },
     }
 })
@@ -126,12 +162,15 @@ export const {
     pushQaItem,
     setShowProductAlert,
     setThink,
+    setLoading,
     createChat,
     setPresetPrompt,
     setAppPresetPrompt,
     setChatName,
     delChat,
     triggerCtx,
+    upsertQaItem,
+    triggerStream,
 } = appSlice.actions
 
 export function getChat(state: IAppSlice) {
@@ -143,6 +182,10 @@ export function getChat(state: IAppSlice) {
         }
         return undefined
     }
+}
+
+export function selectEnabledStream(state: RootState) {
+    return state.app.currentChatIdx >= 0 ? state.app.chats[state.app.currentChatIdx]?.enabledStream : state.app.enabledStream
 }
 
 export default appSlice.reducer

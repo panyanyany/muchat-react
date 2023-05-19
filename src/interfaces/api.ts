@@ -1,4 +1,4 @@
 export interface IResponseData {
     code: number
-    data: object
+    data: any
 }

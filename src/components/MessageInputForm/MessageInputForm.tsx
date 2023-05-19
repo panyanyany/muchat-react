@@ -1,7 +1,15 @@
 import i18nUtil from "../../util/i18n-util";
 import React, {useRef, useState} from "react";
 import * as _ from 'lodash'
-import {createChat, getChat, pushQaItem, setCurrentChat, setShowProductAlert, setThink} from "../../store/appSlice";
+import {
+    createChat,
+    getChat,
+    pushQaItem, selectEnabledStream,
+    setCurrentChat, setLoading,
+    setShowProductAlert,
+    setThink,
+    upsertQaItem
+} from "../../store/appSlice";
 import axios from "axios";
 import {AppConfig} from "../../config/app";
 import {useDispatch, useSelector} from "react-redux";
@@ -9,22 +17,104 @@ import store, {RootState} from "../../store/store";
 import {ChatSession, MessageItem} from "../../interfaces/session";
 import {getUserSlug} from "../../util/util";
 import {newChat} from "../../util/chat";
+import {ChatCompletionsResponse} from "../../interfaces/openai";
+import {IResponseData} from "../../interfaces/api";
+import {sleep} from "../../util/time";
 
 const D_ASK = 1
 const D_REPLY = 2
+
+export interface ICheckResponseParams {
+    status?: number,
+    data?: IResponseData,
+    error?: Error
+}
+
+export interface IPostStreamParams {
+    data: object,
+    onData: (data: any) => void,
+    onError: (params: ICheckResponseParams) => void
+    onDone?: () => void
+}
+
+async function postStream({data, onData, onError, onDone}: IPostStreamParams) {
+    let dataObj = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    }
+
+    try {
+        const response = await fetch(AppConfig.API_ENDPOINT + '/openai/v1/chat/completions', dataObj)
+        if (response.ok) {
+            // let i = 0
+            let msgpack = ''
+            let getStream = async function (reader) {
+                return reader.read().then(async function (result) {
+                    // 如果数据已经读取完毕，直接返回
+                    if (result.done) {
+                        console.log(889, "result done")
+                        onDone?.()
+                        return
+                    }
+                    // 取出本段数据（二进制格式）
+                    const pack = new TextDecoder().decode(result.value);
+                    let mutilated = false
+                    console.log('pack-----------\n', pack)
+                    if (!pack.endsWith('\n\n')) {
+                        mutilated = true
+                    }
+                    console.log('multilated-----', mutilated)
+                    msgpack += pack
+                    const chunks = msgpack.split('\n\n')
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i]
+                        console.log('chunk----', chunk)
+                        if (i == chunks.length - 1 && mutilated) {
+                            msgpack = chunk
+                            break
+                        }
+                        if (!chunk) {
+                            continue
+                        }
+                        if (!chunk.startsWith('event:')) {
+                            onError({data: JSON.parse(chunk), status: response.status})
+                            return
+                        }
+                        const chunk1 = chunk.split('\n')[1]
+                        const data = JSON.parse(chunk1.slice(5))
+                        await onData(data)
+                        // i++
+                    }
+                    if (!mutilated) {
+                        msgpack = ''
+                    }
+                    // 递归处理下一段数据
+                    return getStream(reader)
+                })
+            }
+            await getStream(response.body!.getReader())
+        } else {
+            onError({data: JSON.parse(await response.text()), status: response.status})
+        }
+    } catch (e: any) {
+        onError({error: e})
+    }
+}
 
 export function MessageInputForm() {
     const textArea = useRef<any>();
     const [ques, setQues] = useState('')
     const [textAreaRows, setTextAreaRows] = useState(1)
     const dispatch = useDispatch()
-    const qaList = useSelector((state: RootState) => state.app.qaList)
-    const think = useSelector((state: RootState) => state.app.think)
     const app = useSelector((state: RootState) => state.app)
-    const currentChat = useSelector((state: RootState) => state.app.currentChat)
     const currentChatIdx = useSelector((state: RootState) => state.app.currentChatIdx)
     const chatCnt = useSelector((state: RootState) => state.app.chatCnt)
-    const enabledCtx = currentChatIdx >= 0 ? app.chats[currentChatIdx].enabledCtx : app.enabledCtx
+    const enabledCtx = currentChatIdx >= 0 ? app.chats[currentChatIdx]?.enabledCtx : app.enabledCtx
+    const qaList = app.chats[currentChatIdx]?.qaList || []
+    const enabledStream = useSelector(selectEnabledStream)
 
     function handleChange(e) {
         // console.log('handleChange', e)
@@ -67,15 +157,37 @@ export function MessageInputForm() {
         }
     }
 
-    function addDialog(chatId: string, dtype: number, text: string, hasError = 0, respData = undefined) {
+    function addDialog(chatId: string, dtype: number, text: string, hasError = 0, respData: any = undefined) {
         dispatch(pushQaItem({dtype, text, hasError, respData, chatId}))
         setTimeout(() => {
             window['qaContainerTail'].scrollIntoView()
         }, 200)
     }
 
+    function checkResponse(e: { status?: number, data?: IResponseData, error?: any, chatId: string }) {
+        let hasError = 0, msg
+        if (e.status) {
+            const respData = e.data!
+
+            if (e.status == 200) {
+                msg = e.data?.data.answer || e.data?.data.content
+            } else if (respData.code == 2002 || respData.code == 2003 || respData.code == 2005) {
+                dispatch(setShowProductAlert(true))
+                hasError = 1
+            } else {
+                hasError = 1
+            }
+        } else {
+            hasError = 1
+        }
+        dispatch(setThink(false))
+        dispatch(setLoading(false))
+        addDialog(e.chatId, D_REPLY, msg, hasError, e.data)
+    }
+
     async function submitQuestion(chatId, question) {
         dispatch(setThink(true))
+        dispatch(setLoading(true))
 
         const msgAry = qaList.filter(e => !e.hasError)
         const messages: MessageItem[] = []
@@ -94,38 +206,61 @@ export function MessageInputForm() {
                 question = lastAry[0].text + '\n\n' + question
             }
         }
-        let resp, msg, hasError, respData
+        let resp, msg, hasError, respData, responseType
         try {
-            resp = await axios.post(AppConfig.API_ENDPOINT + '/query', {
+            responseType = enabledStream ? "stream" : 'none'
+            let presetPrompt = getChat(store.getState().app)(chatId)!.presetPrompt
+            if (presetPrompt?.act == '无预设') {
+                presetPrompt = undefined
+            }
+            const postData = {
                 question: question,
                 messages,
                 slug: getUserSlug(),
-                preset_prompt: getChat(store.getState().app)(chatId)!.presetPrompt,
-            }, {timeout: 2 * 60_000})
-            respData = resp.data
-            if (respData.code === 0) {
-                msg = respData.data.answer
-            } else {
-                msg = respData.data.content
+                preset_prompt: presetPrompt,
             }
-            hasError = resp.data.code != 0
+            if (responseType == "stream") {
+                await postStream({
+                    data: postData,
+                    onData: async (data: ChatCompletionsResponse) => {
+                        if (!data.choices[0].delta.content) {
+                            return
+                        }
+                        dispatch(setThink(false))
+                        for (const char of Array.from(data.choices[0].delta.content)) {
+                            dispatch(upsertQaItem({
+                                id: data.id,
+                                text: char,
+                                D_REPLY,
+                                hasError,
+                                respData,
+                                chatId,
+                            }))
+                            await sleep(50)
+                        }
+                        setTimeout(() => {
+                            window['qaContainerTail'].scrollIntoView()
+                        }, 200)
+                    }, onError: (e) => {
+                        checkResponse({status: e.status, data: e.data, chatId})
+                    }, onDone: () => {
+                        dispatch(setLoading(false))
+                    },
+                })
+            } else {
+                resp = await axios.post(AppConfig.API_ENDPOINT + '/query', postData, {
+                    timeout: 2 * 60_000,
+                })
+                console.log('resp', resp)
+                checkResponse({status: resp.status, data: resp.data, chatId})
+            }
         } catch (e: any) {
             if (e?.response?.data) {
-                respData = e.response.data
-                console.log('respData in error,', respData)
-                msg = JSON.stringify(respData)
-
-                if (respData.code == 2002 || respData.code == 2003 || respData.code == 2005) {
-                    dispatch(setShowProductAlert(true))
-                }
-
+                checkResponse({status: e.response.status, data: e.response.data, chatId})
             } else {
-                msg = e.toString()
+                checkResponse({error: e, chatId})
             }
-            hasError = 1
         }
-        dispatch(setThink(false))
-        addDialog(chatId, D_REPLY, msg, hasError, respData)
     }
 
     return <form
@@ -135,12 +270,12 @@ export function MessageInputForm() {
             <div className="w-full flex gap-2 justify-center mb-3"></div>
             <div
                 className="flex flex-col w-full py-2 pl-3 md:py-3 md:pl-4 relative border border-black/10 bg-white dark:border-gray-900/50 dark:text-white dark:bg-gray-700 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:shadow-[0_0_15px_rgba(0,0,0,0.10)]"
-                style={{backgroundColor: think ? '#eee' : '', cursor: think ? 'wait' : ''}}
+                style={{backgroundColor: app.loading ? '#eee' : '', cursor: app.loading ? 'wait' : ''}}
             >
                 <textarea tabIndex={0}
                           data-id="root"
                           id="inputArea"
-                          style={{maxHeight: '200px', overflowY: 'hidden', cursor: think ? 'wait' : ''}}
+                          style={{maxHeight: '200px', overflowY: 'hidden', cursor: app.loading ? 'wait' : ''}}
                           rows={textAreaRows}
                           placeholder={i18nUtil.t("在此输入问题，Shift + Enter 换行，Enter 发送") || ''}
                           name='question'
@@ -165,7 +300,7 @@ export function MessageInputForm() {
                           }}
                           ref={textArea}
                           className="w-full resize-none focus:ring-0 focus-visible:ring-0 p-0 pr-7 m-0 border-0 bg-transparent dark:bg-transparent"
-                          disabled={think}
+                          disabled={app.loading}
                 >
 
                 </textarea>
