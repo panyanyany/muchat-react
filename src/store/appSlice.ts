@@ -114,6 +114,7 @@ const appSlice = createSlice<IAppSlice, SliceCaseReducers<IAppSlice>>({
             }
             state.chats.unshift(curChat)
             state.currentChat = curChat.id
+            state.currentChatIdx = 0
         },
         pushQaItem: (state, action: PayloadAction<IPushQaItem>) => {
             const qaItem = action.payload

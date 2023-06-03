@@ -112,8 +112,8 @@ export function MessageInputForm() {
     const app = useSelector((state: RootState) => state.app)
     const currentChatIdx = useSelector((state: RootState) => state.app.currentChatIdx)
     const chatCnt = useSelector((state: RootState) => state.app.chatCnt)
-    const enabledCtx = currentChatIdx >= 0 ? app.chats[currentChatIdx]?.enabledCtx : app.enabledCtx
-    const qaList = app.chats[currentChatIdx]?.qaList || []
+    const enabledCtx = currentChatIdx >= 0 ? app.chats[currentChatIdx]?.enabledCtx : app.chats[0]?.enabledCtx
+    const qaList = currentChatIdx >= 0 ? app.chats[currentChatIdx]?.qaList: []
     const enabledStream = useSelector(selectEnabledStream)
 
     function handleChange(e) {
