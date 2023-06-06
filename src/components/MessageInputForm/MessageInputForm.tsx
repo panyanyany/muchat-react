@@ -142,6 +142,7 @@ export function MessageInputForm() {
             curChat = newChat(chatCnt + 1)
             curChat.presetPrompt = store.getState().app.presetPrompt
             curChat.enabledCtx = store.getState().app.enabledCtx
+            curChat.enabledStream = store.getState().app.enabledStream
             dispatch(createChat(curChat))
             chatId = curChat.id
         }
